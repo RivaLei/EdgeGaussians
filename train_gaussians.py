@@ -14,6 +14,7 @@ from edgegaussians.vis import vis_utils
 from edgegaussians.models.edge_gs import EdgeGaussianSplatting
 from edgegaussians.data.dataparsers import DataParserFactory
 
+#test github syns
 def train_epoch(model, 
                 dataloader, 
                 optimizers,
