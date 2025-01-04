@@ -48,10 +48,10 @@ def get_lambda_projection(loss_config, step : int , max_steps : int = 200):
 def get_optimizers_schedulers(model, config):
 
     means_optimizer = torch.optim.Adam([model.gauss_params["means"]], lr=config["means"]["start_lr"])
-    means_scheduler = torch.optim.lr_scheduler.MultiStepLR(means_optimizer, milestones=config["means"]["milestones"], gamma=config["means"]["gamma"])
+    means_scheduler = torch.optim.lr_scheduler.MultiStepLR(means_optimizer, milestones=config["means"]["milestones"], gamma=config["means"]["gamma"])#采用里程碑式学习率设置 gamma：衰减因子
     
     scales_optimizer = torch.optim.Adam([model.gauss_params["scales"]], lr=config["scales"]["start_lr"])
-    scales_scheduler = CustomLRScheduler(scales_optimizer, first_stage_epochs = config["scales"]["start_at_epoch"] , lr_after_first_stage = config["scales"]["start_lr"])
+    scales_scheduler = CustomLRScheduler(scales_optimizer, first_stage_epochs = config["scales"]["start_at_epoch"] , lr_after_first_stage = config["scales"]["start_lr"])#采用自定义的学习率设置：在start_at_epoch之后采用start_lr
     
     quats_optimizer = torch.optim.Adam([model.gauss_params["quats"]], lr=config["quats"]["start_lr"])
     quats_scheduler = CustomLRScheduler(quats_optimizer, first_stage_epochs = config["quats"]["start_at_epoch"], lr_after_first_stage = config["quats"]["start_lr"])
