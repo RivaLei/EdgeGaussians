@@ -358,10 +358,10 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
         # get the directions towards the nearest neighbors
         neighbor_dirs = self.means[:, None, :] - self.means[inds]
-        neighbor_dirs = neighbor_dirs / torch.norm(neighbor_dirs, dim=-1, keepdim=True)
+        neighbor_dirs = neighbor_dirs / torch.norm(neighbor_dirs, dim=-1, keepdim=True)#当前gs 指向最近邻的方向向量
 
         if self.dir_loss_enforce_method != 'enforce_half':
-            alignment = torch.abs(torch.sum(major_dirs[:, None, :] * neighbor_dirs, dim=-1))
+            alignment = torch.abs(torch.sum(major_dirs[:, None, :] * neighbor_dirs, dim=-1))#计算点积
             mean_alignment = torch.mean(alignment, dim=-1)
 
         elif self.dir_loss_enforce_method == 'enforce_half':
@@ -375,9 +375,9 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
     def compute_ratio_loss(self):
         # get the ratio second largest to the largest scale for each gaussian
-        scales = torch.exp(self.scales)
+        scales = torch.exp(self.scales)#得到scale的实际值-原先是对数值
         sorted_scales, _ = torch.sort(scales, dim=-1, descending=True)
-        ratio = sorted_scales[:, 1] / sorted_scales[:, 0]
+        ratio = sorted_scales[:, 1] / sorted_scales[:, 0]#第二大尺度与最大尺度的比值
         return torch.mean(ratio)
     
     
@@ -412,7 +412,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
     def cull_gaussians(self, optimizers, cull_mask, reset_rest = True):
         for name, param in self.gauss_params.items():
-            self.gauss_params[name] = param[~cull_mask]
+            self.gauss_params[name] = param[~cull_mask]#保留未被标记为剔除的高斯分布
         
         if reset_rest:
             self.reset_opacities()
@@ -581,7 +581,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
         num_gs = self.means.shape[0]
         num_frames = len(self.viewcams)
 
-        gs_visib_matrix = torch.zeros(num_gs, num_frames, dtype=torch.bool)
+        gs_visib_matrix = torch.zeros(num_gs, num_frames, dtype=torch.bool)#可见性
         
         for idx, viewcam in enumerate(self.viewcams):
 
@@ -593,7 +593,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
             projected_means_r = projected_means.round().long()
             good_inds = (projected_means_r[:, 0] >= 0) & (projected_means_r[:, 0] < w) & (projected_means_r[:, 1] >= 0) & (projected_means_r[:, 1] < h)
             projecting_within = projected_means_r[good_inds]
-            projecting_on_edge = self.edge_masks[idx][projecting_within[:, 1], projecting_within[:, 0]]
+            projecting_on_edge = self.edge_masks[idx][projecting_within[:, 1], projecting_within[:, 0]]#获取投影在边缘上的高斯分布
             gs_visib_matrix[good_inds, idx] = projecting_on_edge
         
         mean_projections = torch.mean(gs_visib_matrix.float(), dim=1)

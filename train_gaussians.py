@@ -123,7 +123,7 @@ def train_epoch(model,
             if model.step % 5 == 0:
                 ratio_loss = model.compute_ratio_loss()
                 summary_writer.add_scalar('Ratio loss', ratio_loss.item(), epoch)
-                lambda_ratio_loss = (avg_loss * ratio_loss_scale_factor) / ratio_loss.item()
+                lambda_ratio_loss = (avg_loss * ratio_loss_scale_factor) / ratio_loss.item()#.item()转化为标量
                 ratio_loss_ =  lambda_ratio_loss * ratio_loss
                 ratio_loss_.backward()
                 for param,opt in optimizers.items():
