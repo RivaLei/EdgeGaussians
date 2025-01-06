@@ -19,6 +19,14 @@ def visualize_clusters(points, clusters):
             ipdb.set_trace()
     color_coded_points.colors = o3d.utility.Vector3dVector(colors_pcd)
     o3d.visualization.draw_geometries([color_coded_points])
+    
+    # 保存点云数据为 PLY 文件
+    output_path = "color_coded_points.ply"
+    o3d.io.write_point_cloud(output_path, color_coded_points)
+    print(f"Point cloud saved to {output_path}")
+
+
+
 
 def visualize_fit_edges(pts_lines, pts_curves, vis_method = 'sampled_points'):
 

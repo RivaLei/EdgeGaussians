@@ -33,14 +33,15 @@ contourpy==1.2.1
 # cuda-opencl==12.5.39
 # cuda-runtime==12.1.0
 # cuda-version==12.5
-cuda-cudart==11.9.0
-cuda-cupti==11.9.0
-cuda-libraries==11.9.0
-cuda-nvrtc==11.9.0
-cuda-nvtx==11.9.0
-cuda-opencl==11.9.0
-cuda-runtime==11.9.0
-cuda-version==11.9.0
+
+# cuda-cudart==11.9.0
+# cuda-cupti==11.9.0
+# cuda-libraries==11.9.0
+# cuda-nvrtc==11.9.0
+# cuda-nvtx==11.9.0
+# cuda-opencl==11.9.0
+# cuda-runtime==11.9.0
+# cuda-version==11.9.0
 
 cycler==0.12.1
 dacite==1.8.1

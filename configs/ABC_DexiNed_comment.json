@@ -4,13 +4,13 @@
 
         "if_duplicate_high_pos_grad" : true,
         "dup_threshold_type" : "absolute",//计算grad 阈值的方式  percentile_top
-        "dup_threshold_value" : 0.5,//阈值 比较时 grad 已归一化 
+        "dup_threshold_value" : 0.5,//阈值 比较时 grad 已归一化  
         "dup_factor" : 3,//clone重复次数
         "dup_high_pos_grads_at_epoch" : [40,50,60,70,80,90,100,110,120,130,140,150,160,210,220,350,375],
 
         "if_cull_low_opacity" : true,
         "cull_opacity_type" : "absolute",
-        "cull_opacity_value" : 0.05,
+        "cull_opacity_value" : 0.05,//透明度阈值
         "cull_opacity_at_epoch" : [125, 310],
 
         "if_cull_wayward" : false,

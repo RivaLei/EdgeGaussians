@@ -85,7 +85,7 @@ def filter_by_projection(gaussian_means,
     num_gs = gaussian_means.shape[0]
     num_images = len(edge_images)
     print(f"Num points before filtering by projection: {num_gs}")
-    gs_visib_matrix = np.zeros((num_gs, num_images))
+    gs_visib_matrix = np.zeros((num_gs, num_images))#用于存储每个高斯分布在每个图像的可见性
 
     for i in range(num_images):
         
@@ -101,21 +101,21 @@ def filter_by_projection(gaussian_means,
         edge_uv = np.array(edge_uv)
         if len(edge_uv) == 0:
             continue
-        edge_uv = np.round(edge_uv).astype(np.int32)
+        edge_uv = np.round(edge_uv).astype(np.int32)#转为整数值
         edge_u = edge_uv[:, 0]
         edge_v = edge_uv[:, 1]
 
         edge_map = edge_images[i].cpu().numpy()
 
-        valid_mask = (edge_u >= 0) & (edge_u < w) & (edge_v >= 0) & (edge_v < h)
+        valid_mask = (edge_u >= 0) & (edge_u < w) & (edge_v >= 0) & (edge_v < h)#边界检查-所有gs的有效投影点
         valid_edge_uv = edge_uv[valid_mask,:]
 
         if len(valid_edge_uv) > 0:
             
-            projected_edge = edge_map[valid_edge_uv[:, 1], valid_edge_uv[:, 0]]
-            gs_visib_matrix[valid_mask, i] += projected_edge
+            projected_edge = edge_map[valid_edge_uv[:, 1], valid_edge_uv[:, 0]]#有效gs投影到图像上的边缘值
+            gs_visib_matrix[valid_mask, i] += projected_edge#将有效gs投影到图像上的边缘值累加存储到gs_visib_matrix中
 
-    gs_visib = np.mean(gs_visib_matrix, axis=1)
+    gs_visib = np.mean(gs_visib_matrix, axis=1)#计算每个gs在所有图像上的平均可见性
     inlier_inds = gs_visib > visib_thresh
 
     print(f"Removed {num_gs - np.sum(inlier_inds)} points")
