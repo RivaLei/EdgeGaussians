@@ -123,10 +123,18 @@
     },
     "parametric_fitting":
     {
+<<<<<<< HEAD
         "_comment_" : "small threshold for angle and high comp factor as mostly curves in Replica",
+=======
+        "_comment_" : "small threshold for angle and high comp factor as mostly curves in DTU",
+>>>>>>> das
         "angle_thresh" : 0.5,
         "line_ransac_thresh" : 0.001,
         "line_curve_residual_comp_factor" : 1.0,
         "min_cluster_size" : 3
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> das

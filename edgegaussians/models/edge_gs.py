@@ -14,13 +14,13 @@ from edgegaussians.cameras.cameras import BaseCamera
 from edgegaussians.utils.misc_utils import unravel_index, random_quat_tensor, quats_to_rotmats_tensor
 from edgegaussians.utils.io_utils import write_gaussian_params_as_ply
 @dataclass
-class EdgeGaussianSplattingConfig:
-
-    if_duplicate_high_pos_grad: bool = True
+class EdgeGaussianSplattingConfig: #与data.config相对应
+    #复制gs 
+    if_duplicate_high_pos_grad: bool = True 
     dup_threshold_type: str = "percentile"
     dup_threshold_value: float = 0.95
     dup_factor: int = 2
-    dup_high_pos_grads_at_epoch: list = field(default_factory=lambda: [36, 46, 51, 76, 101, 126, 151])
+    dup_high_pos_grads_at_epoch: list = field(default_factory=lambda: [36, 46, 51, 76, 101, 126, 151]) #复制gs的epoch
 
     if_cull_low_opacity: bool = True
     cull_opacity_type: str = "absolute"
@@ -34,6 +34,7 @@ class EdgeGaussianSplattingConfig:
     cull_wayward_threshold_value: float = 0.05
     cull_wayward_at_epoch : list = field(default_factory=lambda: [51,101,151])
 
+    #初始化
     init_random_init: bool = False
     init_dup_rand_noise_scale: float = 0.05
     init_min_num_gaussians: int = 5000
@@ -302,9 +303,9 @@ class EdgeGaussianSplatting(torch.nn.Module):
             # sample pixels from bg
             num_bg_pixels = int(bg_edge_pixel_ratio * self.edge_masks[image_index].sum())
             bg_mask = ~self.edge_masks[image_index]
-            bg_mask_1 = torch.where(bg_mask)[0]
-            bg_flat_select_1 = torch.randperm(len(bg_mask_1))[:num_bg_pixels]
-            indices = unravel_index(bg_flat_select_1, bg_mask.shape)
+            bg_mask_1 = torch.where(bg_mask)[0]#mask索引
+            bg_flat_select_1 = torch.randperm(len(bg_mask_1))[:num_bg_pixels]#随即选择索引
+            indices = unravel_index(bg_flat_select_1, bg_mask.shape)#二维索引
 
             bg_mask_final = torch.zeros_like(bg_mask, dtype = torch.bool)
             bg_mask_final[indices[:,0], indices[:,1]] = True
@@ -357,10 +358,10 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
         # get the directions towards the nearest neighbors
         neighbor_dirs = self.means[:, None, :] - self.means[inds]
-        neighbor_dirs = neighbor_dirs / torch.norm(neighbor_dirs, dim=-1, keepdim=True)
+        neighbor_dirs = neighbor_dirs / torch.norm(neighbor_dirs, dim=-1, keepdim=True)#当前gs 指向最近邻的方向向量
 
         if self.dir_loss_enforce_method != 'enforce_half':
-            alignment = torch.abs(torch.sum(major_dirs[:, None, :] * neighbor_dirs, dim=-1))
+            alignment = torch.abs(torch.sum(major_dirs[:, None, :] * neighbor_dirs, dim=-1))#计算点积
             mean_alignment = torch.mean(alignment, dim=-1)
 
         elif self.dir_loss_enforce_method == 'enforce_half':
@@ -374,9 +375,9 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
     def compute_ratio_loss(self):
         # get the ratio second largest to the largest scale for each gaussian
-        scales = torch.exp(self.scales)
+        scales = torch.exp(self.scales)#得到scale的实际值-原先是对数值
         sorted_scales, _ = torch.sort(scales, dim=-1, descending=True)
-        ratio = sorted_scales[:, 1] / sorted_scales[:, 0]
+        ratio = sorted_scales[:, 1] / sorted_scales[:, 0]#第二大尺度与最大尺度的比值
         return torch.mean(ratio)
     
     
@@ -411,7 +412,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
 
     def cull_gaussians(self, optimizers, cull_mask, reset_rest = True):
         for name, param in self.gauss_params.items():
-            self.gauss_params[name] = param[~cull_mask]
+            self.gauss_params[name] = param[~cull_mask]#保留未被标记为剔除的高斯分布
         
         if reset_rest:
             self.reset_opacities()
@@ -433,7 +434,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
         param = optimizer.param_groups[0]["params"][0]
         param_state = optimizer.state[param]
         if "exp_avg" in param_state:
-            repeat_dims = (n,) + tuple(1 for _ in range(param_state["exp_avg"].dim() - 1))
+            repeat_dims = (n,) + tuple(1 for _ in range(param_state["exp_avg"].dim() - 1))#第一个元素是n 后续元素是1
             
             dup_exp_avg_list = [torch.zeros_like(param_state["exp_avg"][dup_mask.squeeze()]).repeat(*repeat_dims) for i in range(self.config.dup_factor-1)]
             dup_exp_avg_sq_list = [torch.zeros_like(param_state["exp_avg_sq"][dup_mask.squeeze()]).repeat(*repeat_dims) for i in range(self.config.dup_factor-1)]
@@ -441,13 +442,13 @@ class EdgeGaussianSplatting(torch.nn.Module):
             param_state["exp_avg"] = torch.cat(
                 [param_state["exp_avg"]] + dup_exp_avg_list,
                 dim=0,
-            )
+            )#将原属列表与重复列表进行连接
             param_state["exp_avg_sq"] = torch.cat(
                 [param_state["exp_avg_sq"]] + dup_exp_avg_sq_list,
                 dim=0,
             )
-        del optimizer.state[param]
-        optimizer.state[new_params[0]] = param_state
+        del optimizer.state[param]#删除旧状态
+        optimizer.state[new_params[0]] = param_state#更新新状态
         optimizer.param_groups[0]["params"] = new_params
         del param
 
@@ -461,7 +462,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
         for name, param in self.gauss_params.items():
             if name == "means":
                 # add small gaussian noise to the duplicated points
-                dup_means_list = [param[dup_mask] for i in range(self.config.dup_factor-1)]
+                dup_means_list = [param[dup_mask] for i in range(self.config.dup_factor-1)]#从param中选择满足mask的点，重复dup_factor次
                 dup_means_tensor = torch.cat(dup_means_list, dim=0)
                 dup_means_tensor += torch.randn_like(dup_means_tensor) * self.config.init_dup_rand_noise_scale
                 self.gauss_params[name] = torch.cat([param, dup_means_tensor],  dim=0)
@@ -553,8 +554,8 @@ class EdgeGaussianSplatting(torch.nn.Module):
         # print(f"Mean absgrads {absgrads_mean}, Median absgrads {absgrads_median}, Std absgrads {absgrads_std}")
         # print(f"80 percentile absgrads {absgrads_80percentile}, 90 percentile absgrads {absgrads_90percentile}")
 
-        grads_n = (grads - grads.min()) / (grads.max() - grads.min())
-        grads_n = grads_n.detach().cpu().numpy()
+        grads_n = (grads - grads.min()) / (grads.max() - grads.min())#归一化
+        grads_n = grads_n.detach().cpu().numpy()#detach 分离张量， 不跟踪梯度
 
         if self.config.dup_threshold_type == "percentile_top":
             duplicate_top_percentile = self.config.dup_threshold_value
@@ -580,7 +581,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
         num_gs = self.means.shape[0]
         num_frames = len(self.viewcams)
 
-        gs_visib_matrix = torch.zeros(num_gs, num_frames, dtype=torch.bool)
+        gs_visib_matrix = torch.zeros(num_gs, num_frames, dtype=torch.bool)#可见性
         
         for idx, viewcam in enumerate(self.viewcams):
 
@@ -592,7 +593,7 @@ class EdgeGaussianSplatting(torch.nn.Module):
             projected_means_r = projected_means.round().long()
             good_inds = (projected_means_r[:, 0] >= 0) & (projected_means_r[:, 0] < w) & (projected_means_r[:, 1] >= 0) & (projected_means_r[:, 1] < h)
             projecting_within = projected_means_r[good_inds]
-            projecting_on_edge = self.edge_masks[idx][projecting_within[:, 1], projecting_within[:, 0]]
+            projecting_on_edge = self.edge_masks[idx][projecting_within[:, 1], projecting_within[:, 0]]#获取投影在边缘上的高斯分布
             gs_visib_matrix[good_inds, idx] = projecting_on_edge
         
         mean_projections = torch.mean(gs_visib_matrix.float(), dim=1)

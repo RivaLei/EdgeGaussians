@@ -14,9 +14,13 @@ from edgegaussians.vis import vis_utils
 from edgegaussians.models.edge_gs import EdgeGaussianSplatting
 from edgegaussians.data.dataparsers import DataParserFactory
 
+<<<<<<< HEAD
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+=======
+#test github syns
+>>>>>>> das
 def train_epoch(model, 
                 dataloader, 
                 optimizers,
@@ -58,7 +62,7 @@ def train_epoch(model,
     avg_loss = 0
 
     sampling_whole_num_epochs_ratio = projection_loss_config["sampling_whole_num_epochs_ratio"]
-    pixel_sampling = projection_loss_config["loss_before_alternating"]
+    pixel_sampling = projection_loss_config["loss_before_alternating"]#用于确定在projection loss 时edge-bg pix 是全局计算 还是按比例采样
 
     if epoch > projection_loss_config["start_alternating_at_epoch"]:
         check_pixel_sampling = True
@@ -81,7 +85,7 @@ def train_epoch(model,
         
         # get rendered image
         idx = data['idx']
-        output = model(idx)
+        output = model(idx)#得到redener的结果：通过调用gssplat第三方库实现
 
         output_image = output['rgb']
         output_image = output_image[:,:,0].unsqueeze(0)
@@ -101,12 +105,12 @@ def train_epoch(model,
         projection_loss_ = lambda_projection_loss * projection_loss
         avg_loss += projection_loss.item()
 
-        projection_loss_.backward()
+        projection_loss_.backward()# 函数用于计算张量的梯度。具体来说，它会计算损失函数相对于模型参数的梯度，并将这些梯度存储在每个参数的 `.grad` 属性中。这个函数通常在反向传播过程中使用。
         model.update_absgrads()
 
         for param,opt in optimizers.items():
-            opt.step()
-            opt.zero_grad()
+            opt.step()#使用计算到的梯度更新模型参数
+            opt.zero_grad()#清除优化器中的参数梯度
 
         if apply_direction_loss:
             if model.step % 5 == 0:
@@ -125,7 +129,7 @@ def train_epoch(model,
             if model.step % 5 == 0:
                 ratio_loss = model.compute_ratio_loss()
                 summary_writer.add_scalar('Ratio loss', ratio_loss.item(), epoch)
-                lambda_ratio_loss = (avg_loss * ratio_loss_scale_factor) / ratio_loss.item()
+                lambda_ratio_loss = (avg_loss * ratio_loss_scale_factor) / ratio_loss.item()#.item()转化为标量
                 ratio_loss_ =  lambda_ratio_loss * ratio_loss
                 ratio_loss_.backward()
                 for param,opt in optimizers.items():
@@ -152,6 +156,7 @@ def train(model, config, dataloader, log_dir, output_dir, device):
     num_epochs = config["num_epochs"]
     weights_update_freq = config["weights_update_freq"]
 
+    #配置变量的优化器&学习率
     optimizers, schedulers = train_utils.get_optimizers_schedulers(model = model,
                                                        config = optim_config)
     print("Optimizers and schedulers created")
@@ -159,7 +164,7 @@ def train(model, config, dataloader, log_dir, output_dir, device):
     projection_loss_config = loss_config["projection_losses"]
     orientation_loss_config = loss_config["orientation_losses"]
 
-    model.dir_loss_num_nn = orientation_loss_config["dir_loss_num_nn"]
+    model.dir_loss_num_nn = orientation_loss_config["dir_loss_num_nn"]#k 邻近
     model.dir_loss_enforce_method = orientation_loss_config["dir_loss_enforce_method"]
     model.update_nearest_neighbors()
     
@@ -184,7 +189,7 @@ def train(model, config, dataloader, log_dir, output_dir, device):
             reset_absgrads = False
 
             for _,sch in schedulers.items():
-                sch.step()
+                sch.step()# 方法用于更新学习率调度器的状态，通常在每个 epoch 结束时调用，以根据预定义的策略调整学习率
 
             if  (model.config.if_duplicate_high_pos_grad) and (epoch in model.config.dup_high_pos_grads_at_epoch):
                 model.duplicate_high_pos_gradients(optimizers)
@@ -247,7 +252,7 @@ def main():
 
     # init seed points
     if not model_config["init_random_init"]:
-        seed_points = data_utils.init_seed_points_from_file(model_config, seed_points_path)
+        seed_points = data_utils.init_seed_points_from_file(model_config, seed_points_path)#seed_points_path sparse.ply
     else:
         num_seed_points = model_config["init_min_num_gaussians"]
         if "random_init_box_center" in model_config:
@@ -261,14 +266,15 @@ def main():
 
     # initialize views and get scale factor if needed
     parser_type = data_config["parser_type"]
-    image_res_scaling_factor = data_config["image_res_scaling_factor"]
+    image_res_scaling_factor = data_config["image_res_scaling_factor"]#影像缩放
 
     data_utils.init_views(dataparser, 
                              images_dir, 
                              parser_type = parser_type,
-                             image_res_scaling_factor = image_res_scaling_factor)
+                             image_res_scaling_factor = image_res_scaling_factor)#edge_image load
 
     # Scale and translate seed points
+    #对应场景尺度？？
     if (data_config["scale_scene_unit"]):
         # get scale from cameras
         rotmats = [view['camera'].R for view in dataparser.views]
@@ -292,7 +298,7 @@ def main():
     # Set up the model and the dataloader and appropriate paths
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     views = [view['camera'] for view in dataparser.views]
-    gt_images = [view['image']/255.0 for view in dataparser.views]
+    gt_images = [view['image']/255.0 for view in dataparser.views]#归一化
 
     for view in views:
         view.to(device)
@@ -301,12 +307,12 @@ def main():
     if args.ckpt_path is not None:
         model.load_state_dict(torch.load(args.ckpt_path))
     else:
-        model.poplutate_params(seed_points=seed_points, viewcams=views, config=model_config)
+        model.poplutate_params(seed_points=seed_points, viewcams=views, config=model_config)#初始化model参数
     
     print("Model populated")
     
     model.compute_image_masks(gt_images)
-    model.compute_weight_masks()
+    model.compute_weight_masks()#weight: pix_num_ratio
     model.to(device)
 
     # Create the dataloader
@@ -331,6 +337,7 @@ def main():
             print(f"Model already trained for {num_epochs} epochs. Exiting")
             return 0
     
+    #主函数
     train(model=model,
           config = training_config,
           dataloader=dataloader, 

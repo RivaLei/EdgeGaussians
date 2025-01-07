@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ed-Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussians.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--config_file","configs/ABC_DexiNed.json",
+                "--scene_name","00004926",
+                
+                
+            ]
+
+        },
+        {
+            "name": "fit-Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/fit_edges.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--config_file","configs/ABC_DexiNed.json",
+                "--scene_name","00004926",
+                "--save_filtered ","--save_sampled_points"
+                
+                
+            ]
+
+        },
+
+        {
+            "name": "vis-Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/visualize_points_with_major_dirs.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                
+                "--input_ply","output/ABC/release_DexiNed/00004926/pts_with_major_dirs.ply "
+                
+                
+            ]
+
+        }
+
+
+      
+    ]
+
+}
