@@ -49,9 +49,9 @@ def main():
     parser = argparse.ArgumentParser(description='Fit edges to the edge gaussians model')
     parser.add_argument('--config_file', type=str, help='Path to the configuration file')
     parser.add_argument('--scene_name', type=str, help='Name of the scene', default = None)
-    parser.add_argument('--input_ply', type=str, help='Path to the ply file with the edge gaussians model')
+    parser.add_argument('--input_ply', type=str, help='Path to the ply file with the edge gaussians model')#gs model ply
     parser.add_argument('--save_filtered', action='store_true', help='Save the filtered points')
-    parser.add_argument('--output_json', type=str, help='Path to the ply file with the fitted edges')
+    parser.add_argument('--output_json', type=str, help='Path to the ply file with the fitted edges')#输出的edge 参数 json
     parser.add_argument('--visualize_clusters', action='store_true', help='Visualize the clusters')
     parser.add_argument('--visualize_fit_edges', action='store_true', help='Visualize the fitted edges')
     parser.add_argument('--save_sampled_points', action='store_true', help='Save the sampled points')
@@ -127,6 +127,7 @@ def main():
 
     # These can be used for evaluation
     if args.save_sampled_points:
+        #如何计算主方向--还没搞懂
         all_curve_points, all_line_points, _, _ = eval_utils.get_pred_points_and_directions_from_dict(parametric_edges_dict, sample_resolution = args.sample_resolution)
         pts = np.concatenate([all_curve_points, all_line_points], axis=0)
         if pts.shape[0] == 0:

@@ -14,6 +14,9 @@ from edgegaussians.vis import vis_utils
 from edgegaussians.models.edge_gs import EdgeGaussianSplatting
 from edgegaussians.data.dataparsers import DataParserFactory
 
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 def train_epoch(model, 
                 dataloader, 
                 optimizers,

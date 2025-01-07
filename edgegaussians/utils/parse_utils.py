@@ -21,7 +21,7 @@ def get_paths_from_data_config(data_config, scene_name):
     
     if data_config["parser_type"] == "emap":
         base_dir = data_config['base_dir']
-        edge_detection_method = data_config['edge_detection_method']
+        edge_detection_method = data_config['+']
         
         # Works for ABC-NEF and replica at the moment
 

@@ -125,6 +125,6 @@ def get_major_directions_from_scales_quats(scales : np.ndarray, quats: np.ndarra
     # scales: (N, 3)
     # quats: (N, 4) with quaternions in wxyz format
     rotmats = quats_to_rotmats_np(quats)
-    argmax_scales = np.argmax(scales, axis=1)
+    argmax_scales = np.argmax(scales, axis=1)# (N,) 每个高斯分布中最大尺度的索引
     major_dirs = rotmats[np.arange(scales.shape[0]), :, argmax_scales]
     return major_dirs
