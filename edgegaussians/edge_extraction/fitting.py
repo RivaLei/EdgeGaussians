@@ -96,7 +96,7 @@ def fit_edges(clusters, pts, dirs,
             
             
             line = pts_curr[inliers]
-            line_eps, _ = line_fitting(line)
+            line_eps, _ = line_fitting(line)#line_eps 线端点
             main_direction = line_eps[3:] - line_eps[:3]
             main_direction /= np.linalg.norm(main_direction)
             
@@ -112,8 +112,8 @@ def fit_edges(clusters, pts, dirs,
             normals2 = np.cross(main_direction, normals)
             normals2 /= np.linalg.norm(normals2, axis=1)[:, np.newaxis]
         
-            lamdas = np.dot(lines_to_point, main_direction)
-            residuals_line_fit = np.abs(np.sum(np.multiply(normals2, lines_to_point), axis=1))
+            lamdas = np.dot(lines_to_point, main_direction)#点到直线的投影
+            residuals_line_fit = np.abs(np.sum(np.multiply(normals2, lines_to_point), axis=1))#点到拟合线的残差
             mean_residual_line = np.mean(residuals_line_fit)
             lamda_order = np.argsort(lamdas)
             lamdas_sorted = lamdas[lamda_order]
@@ -125,9 +125,9 @@ def fit_edges(clusters, pts, dirs,
             out = bezier_fit2(pts_curr)
             if out is not None:
                 popt, residuals, _ = out
-                t_fit = (lamdas_sorted - np.min(lamdas_sorted)) / (np.max(lamdas_sorted) - np.min(lamdas_sorted))
-                fitted_curve = bezier_curve(t_fit, *popt).reshape(-1, 3)
-                fitted_curve_dense = bezier_curve(np.linspace(0, 1, 1000), *popt).reshape(-1, 3)
+                t_fit = (lamdas_sorted - np.min(lamdas_sorted)) / (np.max(lamdas_sorted) - np.min(lamdas_sorted))#对排序后的点进行归一化
+                fitted_curve = bezier_curve(t_fit, *popt).reshape(-1, 3)#计算拟合的曲线-原始点
+                fitted_curve_dense = bezier_curve(np.linspace(0, 1, 1000), *popt).reshape(-1, 3)#计算拟合的曲线-密集采样点
                 # residuals are the minumum distance from the points to the curve
                 residuals = cdist(pts_curr, fitted_curve_dense, 'euclidean')
                 residuals = np.min(residuals, axis=1)
@@ -149,7 +149,7 @@ def fit_edges(clusters, pts, dirs,
             eps.append(line_eps[3:])
             eps_all.append(line_eps[:3])
             eps_all.append(line_eps[3:])
-            ind1, ind2 = 2*len(conns) , 2*len(conns) + 1
+            ind1, ind2 = 2*len(conns) , 2*len(conns) + 1#计算到的点的连接索引
             conns.append([ind1, ind2])
 
         except:

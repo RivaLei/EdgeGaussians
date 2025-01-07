@@ -20,7 +20,7 @@ def cluster_points_using_directions_greedy(points, directions,
     
     nn_model = NearestNeighbors(n_neighbors=5, algorithm="auto", metric="euclidean").fit(points)
     distances_nn, indices_nn = nn_model.kneighbors(points)
-    distances_nn = distances_nn[:, 1:]
+    distances_nn = distances_nn[:, 1:]#去掉每个点自身的最邻近信息
     indices_nn = indices_nn[:, 1:]
 
     unvisited_points = set(range(len(points)))
@@ -39,13 +39,13 @@ def cluster_points_using_directions_greedy(points, directions,
             # get the 5 nearest neighbors of the selected_point
             # for the neighbors of the selected point, get the three alignments, alignment of their directions, and the alignment of their directions with direction vector of the selected point
             dir_between_points = points[indices_nn[selected_point,:]] - points[selected_point]
-            dir_between_points /= np.linalg.norm(dir_between_points, axis=1)[:, np.newaxis]
+            dir_between_points /= np.linalg.norm(dir_between_points, axis=1)[:, np.newaxis]#邻居点与center点连线的方向
             dirs_at_points = directions[indices_nn[selected_point,:]]
 
-            align_dirs_at_pts = np.abs(np.dot(dirs_at_points, directions[selected_point].T))
-            align_dirs_between_pt_dir_at_curr = np.abs(np.dot(dir_between_points, directions[selected_point].T))
-            align_dirs_between_pt_dir_at_nbr = np.diag(np.abs(np.dot(dir_between_points, directions[indices_nn[selected_point]].T)))
-            align_with_curr_cluster = np.abs(np.dot(dirs_at_points, current_cluster_direction.T))
+            align_dirs_at_pts = np.abs(np.dot(dirs_at_points, directions[selected_point].T))#邻居点与center点的夹角--余弦值
+            align_dirs_between_pt_dir_at_curr = np.abs(np.dot(dir_between_points, directions[selected_point].T))#邻居点与center点连线的方向 与 center点的方向的夹角
+            align_dirs_between_pt_dir_at_nbr = np.diag(np.abs(np.dot(dir_between_points, directions[indices_nn[selected_point]].T)))#邻居点与center点连线的方向 与 邻居点的方向的夹角
+            align_with_curr_cluster = np.abs(np.dot(dirs_at_points, current_cluster_direction.T))#邻居点方向 与 当前cluster的方向的夹角
             
             valid_additions = align_dirs_at_pts > angle_thresh
             valid_additions &= align_dirs_between_pt_dir_at_curr > angle_thresh
