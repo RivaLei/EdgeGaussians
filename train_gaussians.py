@@ -14,7 +14,13 @@ from edgegaussians.vis import vis_utils
 from edgegaussians.models.edge_gs import EdgeGaussianSplatting
 from edgegaussians.data.dataparsers import DataParserFactory
 
+<<<<<<< HEAD
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+=======
 #test github syns
+>>>>>>> das
 def train_epoch(model, 
                 dataloader, 
                 optimizers,
