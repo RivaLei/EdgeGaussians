@@ -63,7 +63,9 @@ def train_epoch(model,
 
     sampling_whole_num_epochs_ratio = projection_loss_config["sampling_whole_num_epochs_ratio"]
     pixel_sampling = projection_loss_config["loss_before_alternating"]#用于确定在projection loss 时edge-bg pix 是全局计算 还是按比例采样
-    view_confg = projection_loss_config["view"]
+    
+    
+    
     
     
     if epoch > projection_loss_config["start_alternating_at_epoch"]:
@@ -79,6 +81,7 @@ def train_epoch(model,
 
 
     #view sample config -riva
+    # view_confg = projection_loss_config["view"]
     # bsample = view_confg["sample_view"]
     # sample_step = int(1/view_confg["sample_ratio"])
     
@@ -175,7 +178,7 @@ def train_epoch(model,
     
  
     if epoch % 5 == 0:
-        
+      
         # Write an image grid to tensorboard
         summary_writer.add_image('Output Image', output_image, epoch)
         summary_writer.add_image('GT Image', gt_image, epoch)
@@ -293,8 +296,10 @@ def main():
     if not model_config["init_random_init"]:
         seed_points = data_utils.init_seed_points_from_file(model_config, seed_points_path)#seed_points_path sparse.ply
         
-        if model_config["sample_seed_points"]:
-            seed_points = data_utils.sample_seed_points(seed_points, model_config["sample_seed_points_num_ratio"])
+        if data_config["dataset_name"] == "UrbanScene":
+            if model_config["sample_seed_points"]:
+                seed_points = data_utils.sample_seed_points(seed_points, model_config["sample_seed_points_num_ratio"])
+                
     else:
         num_seed_points = model_config["init_min_num_gaussians"]
         if "random_init_box_center" in model_config:
@@ -312,13 +317,13 @@ def main():
 
 
     #view sample config -riva
-    view_config = training_config["loss"]["projection_losses"]["view"]
-    bsample = view_config["sample_view"]
-    if bsample:
-        sample_view_step = int(1/view_config["sample_view_num_ratio"])
-    else:
-        sample_view_step = 1
-    
+    sample_view_step = 1    
+    if data_config["dataset_name"] == "UrbanScene":
+        view_config = training_config["loss"]["projection_losses"]["view"]
+        bsample = view_config["sample_view"]
+        if bsample:
+            sample_view_step = int(1/view_config["sample_view_num_ratio"])
+      
     data_utils.init_views(dataparser, 
                              images_dir, 
                              parser_type = parser_type,

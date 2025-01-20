@@ -23,7 +23,7 @@
         "cull_gaussians_not_projecting_at_epoch" : [145, 175, 190],
         "cull_gaussians_not_projecting_threshold" : 0.1,
 
-        "init_random_init" : false,
+        "init_random_init" : true,
         "init_min_num_gaussians" : 20000,
         "random_init_box_center" : 0.5,
         "random_init_box_size" : 2.1,
@@ -96,7 +96,7 @@
     "data" : {
         "parser_type": "emap",
         "dataset_name" : "Replica",
-        "base_dir" : "data/Replica_Edge/data/",
+        "base_dir" : "data/Replica_Edge/",
         "edge_detection_method" : "PidiNet",
         "new_extension" : "",
         "image_res_scaling_factor" : 1,
@@ -123,18 +123,15 @@
     },
     "parametric_fitting":
     {
-<<<<<<< HEAD
+
         "_comment_" : "small threshold for angle and high comp factor as mostly curves in Replica",
-=======
-        "_comment_" : "small threshold for angle and high comp factor as mostly curves in DTU",
->>>>>>> das
+
         "angle_thresh" : 0.5,
         "line_ransac_thresh" : 0.001,
         "line_curve_residual_comp_factor" : 1.0,
         "min_cluster_size" : 3
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> das
+
+
+

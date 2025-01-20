@@ -12,10 +12,14 @@
             "console": "integratedTerminal",
             "args":
             [
-                // "--config_file","configs/ABC_DexiNed.json",
-                // "--scene_name","00004926",      
-                "--config_file","configs/UrbanScene.json",
-                "--scene_name","polytech_inter",         
+                "--config_file","configs/ABC_DexiNed.json",
+                "--scene_name","00004926",      
+                // "--config_file","configs/UrbanScene.json",
+                // "--scene_name","polytech_inter",      
+                // "--config_file","configs/DTU.json",
+                // "--scene_name","scan118",    
+                // "--config_file","configs/Replica.json",
+                // "--scene_name","room0",
                 
             ]
 
