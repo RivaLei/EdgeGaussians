@@ -14,13 +14,13 @@ from edgegaussians.vis import vis_utils
 from edgegaussians.models.edge_gs import EdgeGaussianSplatting
 from edgegaussians.data.dataparsers import DataParserFactory
 
-<<<<<<< HEAD
 
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-=======
+#torch 指定使用gpuid
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+torch.cuda.set_device(4)
+
 #test github syns
->>>>>>> das
 def train_epoch(model, 
                 dataloader, 
                 optimizers,
@@ -63,7 +63,9 @@ def train_epoch(model,
 
     sampling_whole_num_epochs_ratio = projection_loss_config["sampling_whole_num_epochs_ratio"]
     pixel_sampling = projection_loss_config["loss_before_alternating"]#用于确定在projection loss 时edge-bg pix 是全局计算 还是按比例采样
-
+    view_confg = projection_loss_config["view"]
+    
+    
     if epoch > projection_loss_config["start_alternating_at_epoch"]:
         check_pixel_sampling = True
     else:
@@ -75,8 +77,16 @@ def train_epoch(model,
     if epoch > ratio_loss_start_at:
         apply_ratio_loss = True
 
+
+    #view sample config -riva
+    # bsample = view_confg["sample_view"]
+    # sample_step = int(1/view_confg["sample_ratio"])
+    
     for i, data in enumerate(dataloader):
 
+        # if bsample and i%sample_step == 0:
+        #     continue
+        
         if check_pixel_sampling:
             if model.step % sampling_whole_num_epochs_ratio == 0:
                 pixel_sampling = projection_loss_config['less_freq_loss']
@@ -87,12 +97,32 @@ def train_epoch(model,
         idx = data['idx']
         output = model(idx)#得到redener的结果：通过调用gssplat第三方库实现
 
+        
         output_image = output['rgb']
         output_image = output_image[:,:,0].unsqueeze(0)
+
+
+        #save output_image
+        #from PIL import Image
+        #利用PIL库保存图片
+        # output_image_cpu = output_image.cpu().detach().numpy()
+        # output_image_cpu.save(f"output_image_{epoch}_{i}.png")
+        
+        #output_image = Image.fromarray(output_image)
+        # vis_utils.save_image(output_image, f"output_image_{epoch}_{i}.png")
+        
+
+        
+      
 
         # get ground truth image
         gt_image = data['image']/255.0
         gt_image = gt_image.to(device)
+        
+        
+        # # Write an image grid to tensorboard
+        # summary_writer.add_image('Output Image', output_image, epoch)
+        # summary_writer.add_image('GT Image', gt_image, epoch)
         
         # compute projection loss
         projection_loss = model.compute_projection_loss(output_image[0,:,:], gt_image[0,:,:], 
@@ -140,7 +170,12 @@ def train_epoch(model,
 
     avg_loss /= len(dataloader)
 
+
+ 
+    
+ 
     if epoch % 5 == 0:
+        
         # Write an image grid to tensorboard
         summary_writer.add_image('Output Image', output_image, epoch)
         summary_writer.add_image('GT Image', gt_image, epoch)
@@ -154,6 +189,7 @@ def train(model, config, dataloader, log_dir, output_dir, device):
     optim_config = config["optim"]
     loss_config = config["loss"]
     num_epochs = config["num_epochs"]
+
     weights_update_freq = config["weights_update_freq"]
 
     #配置变量的优化器&学习率
@@ -167,6 +203,9 @@ def train(model, config, dataloader, log_dir, output_dir, device):
     model.dir_loss_num_nn = orientation_loss_config["dir_loss_num_nn"]#k 邻近
     model.dir_loss_enforce_method = orientation_loss_config["dir_loss_enforce_method"]
     model.update_nearest_neighbors()
+    
+ 
+    
     
     with tqdm(total=num_epochs, desc=f"Training", unit='epoch') as pbar:
         for epoch in range(num_epochs):
@@ -253,6 +292,9 @@ def main():
     # init seed points
     if not model_config["init_random_init"]:
         seed_points = data_utils.init_seed_points_from_file(model_config, seed_points_path)#seed_points_path sparse.ply
+        
+        if model_config["sample_seed_points"]:
+            seed_points = data_utils.sample_seed_points(seed_points, model_config["sample_seed_points_num_ratio"])
     else:
         num_seed_points = model_config["init_min_num_gaussians"]
         if "random_init_box_center" in model_config:
@@ -268,10 +310,20 @@ def main():
     parser_type = data_config["parser_type"]
     image_res_scaling_factor = data_config["image_res_scaling_factor"]#影像缩放
 
+
+    #view sample config -riva
+    view_config = training_config["loss"]["projection_losses"]["view"]
+    bsample = view_config["sample_view"]
+    if bsample:
+        sample_view_step = int(1/view_config["sample_view_num_ratio"])
+    else:
+        sample_view_step = 1
+    
     data_utils.init_views(dataparser, 
                              images_dir, 
                              parser_type = parser_type,
-                             image_res_scaling_factor = image_res_scaling_factor)#edge_image load
+                             image_res_scaling_factor = image_res_scaling_factor,
+                             sample_step = sample_view_step)#edge_image load
 
     # Scale and translate seed points
     #对应场景尺度？？
@@ -304,6 +356,8 @@ def main():
         view.to(device)
 
     model = EdgeGaussianSplatting()
+    #尝试使用多张卡
+    # model = torch.nn.DataParallel(model)#报错
     if args.ckpt_path is not None:
         model.load_state_dict(torch.load(args.ckpt_path))
     else:
@@ -356,3 +410,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

@@ -12,9 +12,10 @@
             "console": "integratedTerminal",
             "args":
             [
-                "--config_file","configs/ABC_DexiNed.json",
-                "--scene_name","00004926",
-                
+                // "--config_file","configs/ABC_DexiNed.json",
+                // "--scene_name","00004926",      
+                "--config_file","configs/UrbanScene.json",
+                "--scene_name","polytech_inter",         
                 
             ]
 
@@ -27,9 +28,12 @@
             "console": "integratedTerminal",
             "args":
             [
-                "--config_file","configs/ABC_DexiNed.json",
-                "--scene_name","00004926",
-                "--save_filtered ","--save_sampled_points"
+                // "--config_file","configs/ABC_DexiNed.json",
+                // "--scene_name","00004926",
+                "--config_file","configs/UrbanScene.json",
+                "--scene_name","polytech_inter", 
+
+                "--save_filtered","--save_sampled_points"
                 
                 
             ]
@@ -45,8 +49,9 @@
             "args":
             [
                 
-                "--input_ply","output/ABC/release_DexiNed/00004926/pts_with_major_dirs.ply "
-                
+                // "--input_ply","output/ABC/release_DexiNed/00004926/pts_with_major_dirs.ply "
+                "--input_ply","output/UrbanScene/release_ELSED/polytech_inter/pts_with_major_dirs.ply"
+              
                 
             ]
 
