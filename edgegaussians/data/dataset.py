@@ -18,6 +18,7 @@ class InputDataset(Dataset):
     def __init__(self, dataparser: DataParser):
         super().__init__()
         self.views = dataparser.views
+        self.occlusion_views = dataparser.occlusion_views
 
     def __len__(self):
         return len(self.views)
@@ -29,4 +30,5 @@ class InputDataset(Dataset):
             idx: The sample index in the dataset.
         """
         image = self.views[idx]['image']
-        return {'image':image, 'idx':torch.tensor(idx, dtype=torch.int64)}
+        occlusion_view = self.occlusion_views[idx]['occlusion_views']
+        return {'image':image, 'idx':torch.tensor(idx, dtype=torch.int64), 'occlusion_image':occlusion_view}

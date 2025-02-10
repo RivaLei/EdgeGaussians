@@ -110,7 +110,7 @@
         "log_dir" : "logs/ABC/",
         "checkpoint_interval" : 5,
         "log_interval" : 1,
-        "exp_name" : "release"
+        "exp_name" : "debug2"
     },
     "filtering":
     {

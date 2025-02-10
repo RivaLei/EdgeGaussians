@@ -11,7 +11,8 @@ from edgegaussians.cameras.cameras import Camera, OpenCVCamera
 class DataParser():
 
     def __init__(self,) -> None:
-        pass
+        self.occlusion_views = []
+        
 
     def load_views(self, images_dir: str):
         pass
@@ -34,6 +35,48 @@ class DataParser():
 
         return image
     
+    #在父类中增加一个新的变量 occlusion_views && 函数
+    def load_occlusion_views(self, images_dir: str,
+                   image_res_scaling_factor: float = 1.0,
+                   sample_step: int = 1.0):
+        
+        #test
+        print("load_occlusion_views")
+        #用views中的image生成对应的空白图片
+        #然后初始化self.occlusion_views
+        for view in self.views:
+             #用views中的image生成对应的空白图片
+            image = view["image"]
+            occlusion_view = torch.zeros_like(image) #0 不遮挡 255 遮挡
+            self.occlusion_views.append({"occlusion_views" : occlusion_view})
+
+
+        
+        # if self.colmap_images_file_path.suffix == ".txt":
+        #     images = read_images_text(self.colmap_images_file_path)
+        # elif self.colmap_images_file_path.suffix == ".bin":
+        #     images = read_images_binary(self.colmap_images_file_path)
+        # images=[]
+
+        # for imid in images:
+        #     if imid % sample_step != 0:
+        #         continue
+        #     image = images[imid]
+        #     if self.new_extension is not None:
+        #         # print(image.name)
+        #         # remove the part following the last dot
+        #         image_name_split = image.name.split(".")
+        #         image_name = ".".join(image_name_split[:-1]) + self.new_extension
+        #         # print(image_name)
+        #     else:
+        #         print("New extension not provided. Using the same extension as the original image.")
+        #         image_name = image.name
+        #     # print(image.name)
+        #     image = self.load_image(images_dir, image_name)
+        #     self.occlusion_views.append({"occlusion_views" : image})
+        
+        
+    
 
 class ColmapDataParser(DataParser):
 
@@ -49,9 +92,11 @@ class ColmapDataParser(DataParser):
             self.cameras_file_path = self.base_path / "cameras.bin"
         self.new_extension = new_extension
         self.views = []
+    
 
     def load_views(self, images_dir: str, 
-                   image_res_scaling_factor: float = 1.0):
+                   image_res_scaling_factor: float = 1.0,
+                   sample_step: int = 1.0):
 
         # load the intrinsics first
         if self.cameras_file_path.suffix == ".txt":
@@ -66,7 +111,10 @@ class ColmapDataParser(DataParser):
         elif self.colmap_images_file_path.suffix == ".bin":
             images = read_images_binary(self.colmap_images_file_path)
         
+
         for imid in images:
+            if imid % sample_step != 0:
+                continue
             image = images[imid]
             tvec = image.tvec
             qvec = image.qvec # this is in w,x,y,z format
@@ -77,20 +125,30 @@ class ColmapDataParser(DataParser):
             params = colmap_camera.params
 
             # only simple pinhole camera support for now
-            assert (colmap_camera.model == "SIMPLE_PINHOLE") or (colmap_camera.model == "PINHOLE"), f"Model : {colmap_camera.model}. Only simple pinhole camera model is supported for now."
+
+            # if colmap_camera.model != "SIMPLE_PINHOLE":
+            #     print("colmap_camera.model: " + colmap_camera.model)
+                
+            # assert (colmap_camera.model == "SIMPLE_PINHOLE") or (colmap_camera.model == "PINHOLE"), f"Model : {colmap_camera.model}. Only simple pinhole camera model is supported for now."
             camera = Camera(height, width, params[0], params[1], params[2], params[3], qvec, tvec, scaling_factor=image_res_scaling_factor)
             if self.new_extension is not None:
-                print(image.name)
+                # print(image.name)
                 # remove the part following the last dot
                 image_name_split = image.name.split(".")
                 image_name = ".".join(image_name_split[:-1]) + self.new_extension
-                print(image_name)
+                # print(image_name)
             else:
                 print("New extension not provided. Using the same extension as the original image.")
                 image_name = image.name
-            print(image.name)
+            # print(image.name)
             image = self.load_image(images_dir, image_name)
             self.views.append({"camera" : camera, "image" : image})
+        
+        
+
+        
+
+                             
 
 
 class EMAPDataParser(DataParser):

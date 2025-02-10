@@ -11,7 +11,8 @@ from scipy.spatial.distance import cdist
 def init_views(dataparser, 
                 images_dir, 
                 parser_type:str = 'emap',
-                image_res_scaling_factor:float = 1.0):
+                image_res_scaling_factor:float = 1.0,
+                sample_step:int = 1,):
     
     if parser_type == "colmap":
         if image_res_scaling_factor is not None:
@@ -20,11 +21,17 @@ def init_views(dataparser,
             image_res_scaling_factor = 1.0
         print(f"Scaling the images by a factor of {image_res_scaling_factor}")
         scene_scale = dataparser.load_views(images_dir=images_dir, 
-                                            image_res_scaling_factor=image_res_scaling_factor)
+                                            image_res_scaling_factor=image_res_scaling_factor,
+                                            sample_step=sample_step)
+        dataparser.load_occlusion_views(images_dir=images_dir,
+                                        image_res_scaling_factor=image_res_scaling_factor,
+                                        sample_step=sample_step)
+        
         print(f"Loaded {len(dataparser.views)} views")
     else:
         scene_scale = dataparser.load_views(images_dir=images_dir)
-    
+        dataparser.load_occlusion_views(images_dir=images_dir)
+            
     return scene_scale
 
 def init_seed_points_from_file(model_config, seed_points_path,
@@ -68,6 +75,17 @@ def init_seed_points_from_file(model_config, seed_points_path,
     print(f"Loaded {seed_points.shape[0]} seed points")
 
     return seed_points
+
+
+def sample_seed_points(seed_points, ratio_sampled_points):
+    
+    sample_step = int(1/ratio_sampled_points)
+    #按照sample_step采样   
+    seed_points = seed_points[::sample_step]
+    print(f"Sampled {seed_points.shape[0]} seed points")
+    return seed_points
+    
+
 
 def init_seed_points_random(num_points, box_center, box_size):
     

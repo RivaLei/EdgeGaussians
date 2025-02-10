@@ -21,7 +21,7 @@ def get_paths_from_data_config(data_config, scene_name):
     
     if data_config["parser_type"] == "emap":
         base_dir = data_config['base_dir']
-        edge_detection_method = data_config['+']
+        edge_detection_method = data_config['edge_detection_method']#之前把代码搞坏了
         
         # Works for ABC-NEF and replica at the moment
 
@@ -32,6 +32,8 @@ def get_paths_from_data_config(data_config, scene_name):
             seed_points_ply_path = data_dir / "colmap/sparse/sparse.ply"
         elif data_config["dataset_name"] == "DTU":
             seed_points_ply_path = data_dir / "sparse_sfm_points.txt"
+        elif data_config["dataset_name"] == "Replica":
+            seed_points_ply_path = data_dir / "colmap/sparse/sparse.ply"#开源数据及没有提供 自己重新计算
     
         # return strings
         return images_dir.as_posix(), cameras_path.as_posix(), seed_points_ply_path.as_posix()
