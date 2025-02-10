@@ -17,8 +17,8 @@ from edgegaussians.data.dataparsers import DataParserFactory
 
 
 #torch 指定使用gpuid
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
-torch.cuda.set_device(4)
+# os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+# torch.cuda.set_device(4)
 
 #test github syns
 def train_epoch(model, 
@@ -31,6 +31,7 @@ def train_epoch(model,
                 projection_loss_config,
                 orientation_loss_config,
                 weights_update_freq = 1,
+                pbar = None
             ):
 
     lambda_projection_loss = lambda_dir_loss = lambda_ratio_loss = 1.0
@@ -45,8 +46,10 @@ def train_epoch(model,
     ratio_loss_start_at = orientation_loss_config["start_ratio_loss_at_epoch"]
     ratio_loss_scale_factor = orientation_loss_config["ratio_loss_scale_factor"]
     direction_loss_scale_factor = orientation_loss_config["dir_loss_scale_factor"]
+    occlusion_start_at= orientation_loss_config["start_occlusion_at_epoch"]
     apply_ratio_loss = False
     apply_direction_loss = False
+    ues_occlusion = False
 
     div = 1
     if epoch > direction_loss_start_at:
@@ -60,6 +63,9 @@ def train_epoch(model,
         opt.zero_grad()
 
     avg_loss = 0
+    direction_loss = 0
+    ratio_loss = 0
+
 
     sampling_whole_num_epochs_ratio = projection_loss_config["sampling_whole_num_epochs_ratio"]
     pixel_sampling = projection_loss_config["loss_before_alternating"]#用于确定在projection loss 时edge-bg pix 是全局计算 还是按比例采样
@@ -78,12 +84,16 @@ def train_epoch(model,
     
     if epoch > ratio_loss_start_at:
         apply_ratio_loss = True
+        
+    if epoch > occlusion_start_at:
+        ues_occlusion = True
 
 
     #view sample config -riva
     # view_confg = projection_loss_config["view"]
     # bsample = view_confg["sample_view"]
     # sample_step = int(1/view_confg["sample_ratio"])
+    
     
     for i, data in enumerate(dataloader):
 
@@ -119,8 +129,22 @@ def train_epoch(model,
       
 
         # get ground truth image
-        gt_image = data['image']/255.0
+        gt_image = data['image']/255.0#归一化
         gt_image = gt_image.to(device)
+        
+        
+        
+        # get occlusion image
+        
+        occlusion_image = data['occlusion_image']
+        occlusion_image = occlusion_image.to(device)
+        
+        
+         #更新occlusion_mask
+        if ues_occlusion: 
+                   
+            occlusion_image= model.update_occlusion_masks(output_image[0,:,:], gt_image[0,:,:],occlusion_image,device,image_index=idx)       
+            # print(f"image {idx.cpu().numpy()} occlusion_image [after update]{torch.nonzero(occlusion_image).size(0)}")
         
         
         # # Write an image grid to tensorboard
@@ -128,10 +152,12 @@ def train_epoch(model,
         # summary_writer.add_image('GT Image', gt_image, epoch)
         
         # compute projection loss
-        projection_loss = model.compute_projection_loss(output_image[0,:,:], gt_image[0,:,:], 
+        projection_loss,edge_mask_final,bg_mask_final = model.compute_projection_loss(output_image[0,:,:], gt_image[0,:,:],
                                                         image_index=idx,
                                                         strategy=pixel_sampling,
+                                                        ues_occlusion = ues_occlusion,
                                                         bg_edge_pixel_ratio = bg_edge_pixel_ratio)
+       
         
         summary_writer.add_scalar('Projection loss', projection_loss.item(), epoch)
 
@@ -182,7 +208,51 @@ def train_epoch(model,
         # Write an image grid to tensorboard
         summary_writer.add_image('Output Image', output_image, epoch)
         summary_writer.add_image('GT Image', gt_image, epoch)
-        
+        if ues_occlusion:
+            # 确保 occlusion_image 的形状为 [channels, height, width]
+            print(f"image {idx.cpu().numpy()} occlusion_image [after update]{torch.nonzero(occlusion_image).size(0)}")
+            if occlusion_image.dim() == 2:  # 如果 occlusion_image 是 [height, width]
+                occlusion_image = occlusion_image.unsqueeze(0)  # 添加一个 channel 维度，变为 [1, height, width]
+            elif occlusion_image.dim() == 3 and occlusion_image.shape[0] != 1:  # 如果 occlusion_image 是 [height, width, channels]
+                occlusion_image = occlusion_image.permute(2, 0, 1)  # 重新排列维度，变为 [channels, height, width]
+
+            edge_mask_final = edge_mask_final.unsqueeze(0)  # 添加一个 channel 维度，变为 [1, height, width]
+            bg_mask_final = bg_mask_final.unsqueeze(0)  # 添加一个 channel 维度，变为 [1, height, width]
+            
+                
+            
+            # 将 occlusion_image 添加到 TensorBoard
+            summary_writer.add_image('Occlusion Image', occlusion_image, epoch)         # Write an image grid to tensorboard
+            summary_writer.add_image('Edge Mask', edge_mask_final, epoch)
+            summary_writer.add_image('BG Mask', bg_mask_final, epoch)
+            
+ 
+        if pbar is not None:
+            if epoch != 0:
+                pbar.update(5)
+            else:
+                pbar.update(1)
+                
+            # 确保所有项都有定义的值
+            num_gaussians = model.gauss_params["means"].shape[0]
+            used_occlusion = ues_occlusion if ues_occlusion is not None else False
+            projection_loss = avg_loss if avg_loss is not None else 0.0
+            direction_loss = direction_loss if direction_loss is not None else 0.0
+            ratio_loss = ratio_loss if ratio_loss is not None else 0.0
+
+            pbar.set_postfix({
+                'Loss': avg_loss, 
+                "Num Gaussians": num_gaussians,
+                "Used Occlusion": used_occlusion,
+                "Projection Loss": projection_loss,
+                "Direction Loss": direction_loss,
+                "Ratio Loss": ratio_loss
+            })
+
+                   
+            
+
+            
     return avg_loss
 
 
@@ -222,11 +292,12 @@ def train(model, config, dataloader, log_dir, output_dir, device):
                                 num_epochs,
                                 projection_loss_config,
                                 orientation_loss_config,
-                                weights_update_freq)
+                                weights_update_freq,
+                                pbar=pbar)
             
-            pbar.set_postfix({'Loss': avg_loss, 
-                              "Num Gaussians": model.gauss_params["means"].shape[0]})
-            pbar.update(1)
+            # pbar.set_postfix({'Loss': avg_loss, 
+            #                   "Num Gaussians": model.gauss_params["means"].shape[0]})
+            # pbar.update(1)
             update_nn = False
             reset_absgrads = False
 
@@ -356,6 +427,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     views = [view['camera'] for view in dataparser.views]
     gt_images = [view['image']/255.0 for view in dataparser.views]#归一化
+    occlusion_images = [view['occlusion_views'] for view in dataparser.occlusion_views]
 
     for view in views:
         view.to(device)
@@ -371,6 +443,7 @@ def main():
     print("Model populated")
     
     model.compute_image_masks(gt_images)
+    model.compute_image_occlusion(occlusion_images)
     model.compute_weight_masks()#weight: pix_num_ratio
     model.to(device)
 
@@ -403,6 +476,7 @@ def main():
           log_dir=log_dir,
           output_dir=output_dir,
           device=device)
+    
 
     end_time = time.time()
     print(f"Training took {end_time - start_time} seconds")
@@ -411,8 +485,12 @@ def main():
 
     if output_config["export_ply"]:
         output_ply_path = os.path.join(output_dir, "gaussians_all.ply")
+        output_visply_path = os.path.join(output_dir, "gaussians_all_visply.ply")
         model.export_as_ply(output_ply_path)
+        model.export_as_visply(output_visply_path)
 
 if __name__ == "__main__":
     main()
     
+    
+# python train_gaussians.py --config_file configs/ABC_DexiNed.json --scene_name 00004926
