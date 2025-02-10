@@ -9,10 +9,10 @@ from gsplat import rasterization
 from dacite import from_dict
 from sklearn.neighbors import NearestNeighbors
 
-from edgegaussians.models.losses import MaskedL1Loss, WeightedL1Loss
+from edgegaussians.models.losses import MaskedL1Loss, WeightedL1Loss,StructureL1Loss
 from edgegaussians.cameras.cameras import BaseCamera
 from edgegaussians.utils.misc_utils import unravel_index, random_quat_tensor, quats_to_rotmats_tensor
-from edgegaussians.utils.io_utils import write_gaussian_params_as_ply
+from edgegaussians.utils.io_utils import write_gaussian_params_as_ply,write_gaussian_params_as_visply
 @dataclass
 class EdgeGaussianSplattingConfig: #与data.config相对应
     #复制gs 
@@ -86,6 +86,8 @@ class EdgeGaussianSplatting(torch.nn.Module):
         self.bg_pixels = []
         self.edge_pixels = []
         self.edge_masks = []
+        self.occlusion_masks = []#riva 新增
+        self.occlusion_weight_masks = []#riva 新增
         self.absgrads = torch.zeros(num_points).to(self.device)
         self.absgrads_normalize_factor = 1.0
         
@@ -160,6 +162,20 @@ class EdgeGaussianSplatting(torch.nn.Module):
             self.edge_masks.append(edge_mask)
 
         print("Computed masks for all images")
+    
+    def compute_image_occlusion(self,occlusion_images,threshold = 0):
+        if threshold == 0:
+            threshold = self.config.edge_detection_threshold
+            
+        for image in occlusion_images:
+            occlusion_mask = image >= self.config.edge_detection_threshold
+            self.occlusion_masks.append(occlusion_mask)
+            #初始化权重 zero
+            occlusion_weight = torch.zeros_like(occlusion_mask, dtype = torch.int)
+            self.occlusion_weight_masks.append(occlusion_weight)
+            
+        print("Computed occlusion masks for all images")
+
 
     def sample_pixels_for_loss(self, image_idx, ratio_edge_to_bg:float = 1):
         """
@@ -192,6 +208,21 @@ class EdgeGaussianSplatting(torch.nn.Module):
             weight_mask[edge_mask] = edge_weight
             weight_mask[~edge_mask] = bg_weight
             self.weight_masks.append(weight_mask)
+            
+        #统计所有影像中的edge和bg像素数量的平均数量 平均权重
+        num_edge_pixels_avg= torch.stack([edge_mask.sum() for edge_mask in self.edge_masks]).sum()
+        num_bg_pixels_avg = torch.stack([(~edge_mask).sum() for edge_mask in self.edge_masks]).sum()
+        edge_weight_avg = num_bg_pixels / (num_edge_pixels + num_bg_pixels)
+        bg_weight_avg = num_edge_pixels / (num_edge_pixels + num_bg_pixels)
+        #num_edge_pixels_avg 除以影像数量得到平均值
+        num_bg_pixels_avg = num_bg_pixels_avg / len(self.edge_masks)
+        num_edge_pixels_avg = num_edge_pixels_avg / len(self.edge_masks)
+        
+        print(f"Edge pix average {num_edge_pixels_avg} BG pix average {num_bg_pixels_avg}")
+        print(f"Edge weight average {edge_weight_avg} BG weight average {bg_weight_avg}")
+        
+
+
 
 
     # Functions required for obtaining the rendered image from a single view - should be batched for faster training
@@ -286,43 +317,164 @@ class EdgeGaussianSplatting(torch.nn.Module):
             "accumulation": alpha.squeeze(0),
         }
     
-    def compute_projection_loss(self, output_image, gt_image, image_index = None, strategy = "bg_edge_ratio", bg_edge_pixel_ratio = 1.0, loss_type: str = "l1"):
+    def compute_projection_loss(self, output_image, gt_image, image_index = None, strategy = "bg_edge_ratio", ues_occlusion = False,bg_edge_pixel_ratio = 1.0, loss_type: str = "l1"):
+        #edge_mask_final 全为0 size与self.occlusion_masks[image_index]相同，数据类型也与他相同
+        edge_mask_final = self.edge_masks[image_index]
+        background_mask_final = ~self.edge_masks[image_index]
 
         if strategy == "whole":
             if loss_type == "l1":
-                criterion = torch.nn.functional.l1_loss
-            elif loss_type == "l2":
+                if ues_occlusion:
+                    criterion = MaskedL1Loss()
+                    occlusion_mask = self.occlusion_masks[image_index]
+                    loss = criterion(output_image, gt_image, ~occlusion_mask)
+                else:
+                    criterion = torch.nn.functional.l1_loss
+                    loss = criterion(output_image, gt_image)
+                    
+                # criterion = torch.nn.functional.l1_loss
+            elif loss_type == "l2":#还没改
                 criterion = torch.nn.functional.mse_loss
-            loss = criterion(output_image, gt_image)
-            return loss
+                loss = criterion(output_image, gt_image)
+            
 
         elif strategy == "bg_edge_ratio":
             masked_l1_loss = MaskedL1Loss()
-            edge_loss = masked_l1_loss(output_image, gt_image, self.edge_masks[image_index])
+            occlusion_mask = self.occlusion_masks[image_index]
+            edge_mask = self.edge_masks[image_index]
+            bg_mask = ~self.edge_masks[image_index]
+            
+            
+            
+            #edge           
+            if ues_occlusion:
+                #edge_mask_new 等于edge_mask中不包含occlusion_mask                     
+                edge_mask_new =  edge_mask&~occlusion_mask 
+            else:
+                edge_mask_new = edge_mask
+            
+            # print(f"edge_mask {edge_mask.sum()} edge_mask_new {edge_mask_new.sum()}")#edge_mask_new true个数
+            #edge_mask_final 等于edge_mask_new  其中true的位置为1 其他为0
+            
+            
+            edge_mask_final= edge_mask_new
+            edge_loss = masked_l1_loss(output_image, gt_image, edge_mask_new)
             
             # sample pixels from bg
-            num_bg_pixels = int(bg_edge_pixel_ratio * self.edge_masks[image_index].sum())
-            bg_mask = ~self.edge_masks[image_index]
-            bg_mask_1 = torch.where(bg_mask)[0]#mask索引
+            if ues_occlusion:
+                 #bg_mask_new 等于bg_mask中不包含occlusion_mask  
+                bg_mask_new = bg_mask&~occlusion_mask
+            else:
+                bg_mask_new = bg_mask
+                
+            # print(f"bg_mask {bg_mask.sum()} bg_mask_new {bg_mask_new.sum()}")#bg_mask_new true个数  应该是减少的-yes
+               
+            num_bg_pixels = int(bg_edge_pixel_ratio * edge_mask_new.sum())            
+            bg_mask_1 = torch.where(bg_mask_new)[0]#mask索引 bg_mask_1 true -bg
             bg_flat_select_1 = torch.randperm(len(bg_mask_1))[:num_bg_pixels]#随即选择索引
-            indices = unravel_index(bg_flat_select_1, bg_mask.shape)#二维索引
+            indices = unravel_index(bg_flat_select_1, bg_mask_new.shape)#二维索引
 
-            bg_mask_final = torch.zeros_like(bg_mask, dtype = torch.bool)
+            bg_mask_final = torch.zeros_like(bg_mask_new, dtype = torch.bool)
             bg_mask_final[indices[:,0], indices[:,1]] = True
             
             # compute loss for edges and sample bg
+            background_mask_final = bg_mask_new# bool
             bg_loss = masked_l1_loss(output_image, gt_image, bg_mask_final)
             loss = edge_loss + bg_loss
+            
+            # num_bg_pixels = int(bg_edge_pixel_ratio * bg_mask_new.sum())            
+            # bg_mask = ~self.edge_masks[image_index]
+            # bg_mask_1 = torch.where(bg_mask)[0]#mask索引
+            # bg_flat_select_1 = torch.randperm(len(bg_mask_1))[:num_bg_pixels]#随即选择索引
+            # indices = unravel_index(bg_flat_select_1, bg_mask.shape)#二维索引
+
+            # bg_mask_final = torch.zeros_like(bg_mask, dtype = torch.bool)
+            # bg_mask_final[indices[:,0], indices[:,1]] = True
+            
+            # # compute loss for edges and sample bg
+            # bg_loss = masked_l1_loss(output_image, gt_image, bg_mask_final)
+            # loss = edge_loss + bg_loss
 
         elif strategy == "weighted":
             weighted_l1_loss = WeightedL1Loss()
             weight_mask = self.weight_masks[image_index]
             loss = weighted_l1_loss(output_image, gt_image, weight_mask)
         
+        elif strategy == "edge_structure_aware":
+            structure_l1_loss = StructureL1Loss()         
+            edge_loss = structure_l1_loss(output_image, gt_image, self.edge_masks[image_index])       
         else:
             raise ValueError(f"Unknown projection loss strategy: {strategy}")
 
-        return loss
+        return loss, edge_mask_final, background_mask_final
+
+    # v1 		
+    # recall 比较理想
+    # precision比较低【很多edge 也被视作occlusion】
+    def update_occlusion_masks(self, output_image, gt_image,occlusion_image_update,device, image_index = None):
+        #计算output_image和gt_image的差值最大的的像素索引值
+        
+        #需要区分output_image - gt_image //gt_image-output_image
+        #计算output_image与gt_image的差值
+        diff = output_image - gt_image
+        
+        
+        # diff = torch(output_image - gt_image)
+        #输出diff的维度
+        # print(diff.shape)
+        
+        # diff = diff.sum(dim=-1)
+        # diff = diff / diff.max()
+        # diff中大于0.5的像素替换为1，否则为0
+        diff = (diff > 0.5).int()
+      # 计算 diff 中不为 0 的像素数量
+        diff_count = torch.nonzero(diff).size(0)
+        #image_index tensor to numpy
+        # image_index = image_index.cpu().numpy()
+        
+        # print(f"image {image_index.cpu().numpy()} Diff count {diff_count}")
+    
+        # diff_idx = diff > 0
+        
+        #diff与occlusion_masks[image_index]相加  
+        weight_mask = self.occlusion_weight_masks[image_index].to(device)#occlusion累积次数   
+        occlusion_mask = self.occlusion_masks[image_index].to(device)
+        
+        
+
+        weight_mask = weight_mask + diff
+        # print(f"image {image_index.cpu().numpy()} weight_mask {torch.nonzero(weight_mask).size(0)}")
+        
+        occlusion_mask_add = weight_mask >= 5#累计大于5次的像素--作为新增occlusion_mask
+        #occlusion_mask_add true个数 
+        occlusion_mask_add_count = torch.nonzero(occlusion_mask_add).size(0)
+
+        
+        device_= self.occlusion_masks[image_index].device
+
+        
+        if occlusion_mask_add_count>0:         
+            
+            # print(f"image {image_index.cpu().numpy()} Occlusion mask add count {occlusion_mask_add_count}")
+            
+            occlusion_mask = occlusion_mask | occlusion_mask_add
+           
+            occlusion_mask_count= torch.nonzero(occlusion_mask).size(0)
+            # print(f"image {image_index.cpu().numpy()} Occlusion mask count {occlusion_mask_count}")
+            
+            #weight_mask >= 5的像素替换为0，其他不变【重置】        
+            weight_mask = weight_mask * (~occlusion_mask_add)   
+            
+            # print(f"image {image_index.cpu().numpy()} weight_mask [after]{torch.nonzero(weight_mask).size(0)}")
+            # 将修改后的 occlusion_mask 赋值回 self.occlusion_masks[image_index]                 
+            self.occlusion_masks[image_index] = occlusion_mask.to(device_)
+            occlusion_image_update = self.occlusion_masks[image_index]
+            # print(f"image {image_index.cpu().numpy()} self.occlusion_mask [after update]{torch.nonzero(self.occlusion_masks[image_index] ).size(0)}")
+            # print(f"image {image_index.cpu().numpy()} occlusion_mask [after update]{torch.nonzero(occlusion_image_update).size(0)}")
+            
+        self.occlusion_weight_masks[image_index] = weight_mask.to(device_)
+            
+        return occlusion_image_update
 
     def update_nearest_neighbors(self):
         # compute the nearest neighbors for each point
@@ -641,3 +793,16 @@ class EdgeGaussianSplatting(torch.nn.Module):
         quats = self.quats.detach().cpu().numpy()
 
         write_gaussian_params_as_ply(means, scales, quats, opacities, ply_path)
+    
+    #输出gs为原生gs等其他viewer支持的ply文件    
+    def export_as_visply(self, ply_path):
+        
+        scales = self.scales.detach().cpu().numpy()
+        opacities = self.opacities.detach().cpu().numpy()
+        
+        # scales = torch.exp(self.scales).detach().cpu().numpy()
+        # opacities = torch.sigmoid(self.opacities).detach().cpu().numpy()
+        means = self.means.detach().cpu().numpy()
+        quats = self.quats.detach().cpu().numpy()
+
+        write_gaussian_params_as_visply(means, scales, quats, opacities, ply_path)

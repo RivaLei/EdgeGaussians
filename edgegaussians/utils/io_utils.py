@@ -1,5 +1,6 @@
 from plyfile import PlyData, PlyElement
 import numpy as np
+import torch
 
 def write_gaussian_params_as_ply(means, scales, quats, opacities, ply_path):
     n_gaussians = means.shape[0]
@@ -24,6 +25,70 @@ def write_gaussian_params_as_ply(means, scales, quats, opacities, ply_path):
     ply_data = PlyData([vertex_element])
     ply_data.write(ply_path)
 
+def construct_list_of_attributes():
+    l = ['x', 'y', 'z', 'nx', 'ny', 'nz']
+    # All channels except the 3 DC
+    for i in range(3):
+        l.append('f_dc_{}'.format(i))
+    for i in range(45):
+        l.append('f_rest_{}'.format(i))
+    l.append('opacity')
+    for i in range(3):
+        l.append('scale_{}'.format(i))
+    for i in range(4):
+        l.append('rot_{}'.format(i))
+    return l
+
+def write_gaussian_params_as_visply(means, scales, quats, opacities, ply_path):
+    n_gaussians = means.shape[0]
+    # vertex = np.zeros(n_gaussians, dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4'),
+    #                                     ('scale1', 'f4'), ('scale2', 'f4'), ('scale3', 'f4'),
+    #                                     ('quat1', 'f4'), ('quat2', 'f4'), ('quat3', 'f4'), ('quat4', 'f4'),
+    #                                     ('opacity', 'f4')])
+    
+    
+    
+    
+    # vertex['x'] = means[:, 0]
+    # vertex['y'] = means[:, 1]
+    # vertex['z'] = means[:, 2]
+    # vertex['scale1'] = scales[:, 0]
+    # vertex['scale2'] = scales[:, 1]
+    # vertex['scale3'] = scales[:, 2]
+    # vertex['quat1'] = quats[:, 0]
+    # vertex['quat2'] = quats[:, 1]
+    # vertex['quat3'] = quats[:, 2]
+    # vertex['quat4'] = quats[:, 3]
+    # vertex['opacity'] = opacities[:, 0]
+    # vertex_element = PlyElement.describe(vertex, 'vertex')
+    # ply_data = PlyData([vertex_element])
+    # ply_data.write(ply_path)
+    
+    xyz = means
+    normals = np.zeros_like(xyz)
+    #f_dc size  n_gaussians*1*3   
+    #f_dc 随机值 0-1
+    f_dc = torch.rand((n_gaussians,1,3)).float()
+    f_rest = torch.rand((n_gaussians,15,3)).float()
+    # f_dc = torch.zeros((n_gaussians,1,3)).float()
+    # f_rest = torch.zeros((n_gaussians,15,3)).float()
+    # f_dc = np.zeros((n_gaussians,1,3))#不确定 0--final rgb  
+    # f_rest = np.zeros((n_gaussians,15,3))
+
+    f_dc = f_dc.transpose(1, 2).flatten(start_dim=1).contiguous().numpy()
+    f_rest = f_rest.transpose(1, 2).flatten(start_dim=1).contiguous().numpy()
+    opacities = opacities#应该是激活函数值
+    scale = scales#应该是log值
+    rotation = quats
+
+    dtype_full = [(attribute, 'f4') for attribute in construct_list_of_attributes()]
+
+    elements = np.empty(n_gaussians, dtype=dtype_full)
+    attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
+    elements[:] = list(map(tuple, attributes))
+    
+    el = PlyElement.describe(elements, 'vertex')
+    PlyData([el]).write(ply_path)
 
 
 def read_gaussian_params_from_ply(ply_path):
