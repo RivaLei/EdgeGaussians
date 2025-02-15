@@ -28,14 +28,14 @@ def get_gt_points(
     Returns:
         numpy.ndarray: Raw and processed ground truth points.
     """
-    objs_dir = os.path.join(data_base_dir, "obj")
+    objs_dir = os.path.join(data_base_dir, "obj")#mesh
     obj_names = os.listdir(objs_dir)
     obj_names.sort()
     index_obj_names = {}
     for obj_name in obj_names:
         index_obj_names[obj_name[:8]] = obj_name
 
-    json_feats_path = os.path.join(data_base_dir, "chunk_0000_feats.json")
+    json_feats_path = os.path.join(data_base_dir, "chunk_0000_feats.json")#?
     with open(json_feats_path, "r") as f:
         json_data_feats = json.load(f)
     json_stats_path = os.path.join(data_base_dir, "chunk_0000_stats.json")

@@ -46,7 +46,8 @@ def train_epoch(model,
     ratio_loss_start_at = orientation_loss_config["start_ratio_loss_at_epoch"]
     ratio_loss_scale_factor = orientation_loss_config["ratio_loss_scale_factor"]
     direction_loss_scale_factor = orientation_loss_config["dir_loss_scale_factor"]
-    occlusion_start_at= orientation_loss_config["start_occlusion_at_epoch"]
+    occlusion_start_at= orientation_loss_config["start_occlusion_at_epoch"] if "start_occlusion_at_epoch" in orientation_loss_config else float("inf")
+    
     apply_ratio_loss = False
     apply_direction_loss = False
     ues_occlusion = False
@@ -366,10 +367,8 @@ def main():
     # init seed points
     if not model_config["init_random_init"]:
         seed_points = data_utils.init_seed_points_from_file(model_config, seed_points_path)#seed_points_path sparse.ply
-        
-        if data_config["dataset_name"] == "UrbanScene":
-            if model_config["sample_seed_points"]:
-                seed_points = data_utils.sample_seed_points(seed_points, model_config["sample_seed_points_num_ratio"])
+        if "sample_seed_points" in model_config:
+            seed_points = data_utils.sample_seed_points(seed_points, model_config["sample_seed_points_num_ratio"])
                 
     else:
         num_seed_points = model_config["init_min_num_gaussians"]
@@ -388,8 +387,8 @@ def main():
 
 
     #view sample config -riva
-    sample_view_step = 1    
-    if data_config["dataset_name"] == "UrbanScene":
+    sample_view_step = 1 
+    if "view" in training_config["loss"]["projection_losses"]:   
         view_config = training_config["loss"]["projection_losses"]["view"]
         bsample = view_config["sample_view"]
         if bsample:

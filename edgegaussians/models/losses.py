@@ -9,3 +9,7 @@ class MaskedL1Loss(nn.Module):
 class WeightedL1Loss(nn.Module):
     def forward(self, input, target, weights):
         return torch.mean(weights.to(input.device) * torch.abs(input - target))
+
+class StructureL1Loss(nn.Module):
+    def forward(self, input, target, weights):
+        return torch.mean(weights.to(input.device) * torch.abs(input - target))

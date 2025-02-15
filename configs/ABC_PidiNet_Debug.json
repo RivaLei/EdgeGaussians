@@ -30,7 +30,7 @@
         "init_dup_rand_noise_scale" : 0.05,
         "init_edge_detection_threshold" : 0.2,
         "init_scales_type": "constant",
-        "init_scales_val" : 0.004,
+        "init_scales_val" : 0.005,
         "init_opacity_type" : "constant",
         "init_opacity_val" : 0.08,
         
@@ -73,8 +73,8 @@
                 "dir_loss_enforce_method": "enforce_full",
                 "lambda_dir_loss": "scale_to_projection_loss",
                 "lambda_ratio_loss": "scale_to_projection_loss",
-                "dir_loss_scale_factor" : 0.01,
-                "ratio_loss_scale_factor" : 0.01
+                "dir_loss_scale_factor" : 0.1,
+                "ratio_loss_scale_factor" : 0.05
             },
             "projection_losses" : {
                 "loss_type": "l1",
@@ -97,7 +97,7 @@
         "parser_type": "emap",
         "dataset_name" : "ABC",
         "base_dir" : "data/ABC-NEF_Edge/data/",
-        "edge_detection_method" : "DexiNed",
+        "edge_detection_method" : "PidiNet",
         "new_extension" : "",
         "image_res_scaling_factor" : 1,
         "scale_scene_unit" : false
@@ -119,7 +119,7 @@
         "filter_stat_outlier_num_nn": 25,
         "filter_stat_outlier_std_mult": 2,
         "filter_by_projection": true,
-        "filter_visib_thresh": 0.15
+        "filter_visib_thresh": 0.1
     },
     "parametric_fitting":
     {

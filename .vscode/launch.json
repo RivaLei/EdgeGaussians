@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ed-Python Debugger: Current File",
+            "name": "gs-Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/train_gaussians.py",
@@ -34,8 +34,12 @@
             [
                 // "--config_file","configs/ABC_DexiNed.json",
                 // "--scene_name","00004926",
-                "--config_file","configs/UrbanScene.json",
-                "--scene_name","polytech_inter", 
+
+                // "--config_file","configs/UrbanScene.json",
+                // "--scene_name","polytech_inter", 
+
+                "--config_file","configs/Replica.json",
+                "--scene_name","room0",
 
                 "--save_filtered","--save_sampled_points"
                 
@@ -54,14 +58,57 @@
             [
                 
                 // "--input_ply","output/ABC/release_DexiNed/00004926/pts_with_major_dirs.ply "
-                "--input_ply","output/UrbanScene/release_ELSED/polytech_inter/pts_with_major_dirs.ply"
+                // "--input_ply","output/UrbanScene/release_ELSED/polytech_inter/pts_with_major_dirs.ply"
+                "--input_ply","output/Replica/release_PidiNet/room0/pts_with_major_dirs.ply"
               
                 
             ]
 
+        },
+
+        {
+            "name": "eval-Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval_general.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                
+                // "--dataset","ABC",
+                // "--scan_names","00004926",//多个scene用逗号隔开
+                // "--version","release",
+                // "--edge_detector","DexiNed",
+                // "--gt_base_dir","data/ABC-NEF_Edge/groundtruth",
+                // // "--write_metrics_dir","metrics/ABC",
+                // "--use_parametric_edges",
+                // "--visualize",
+                // "--write_metrics",
+
+
+                "--dataset","ABC",
+                "--scan_names","00004926",//多个scene用逗号隔开
+                "--version","debug",
+                "--edge_detector","DexiNed",
+                "--gt_base_dir","data/ABC-NEF_Edge/groundtruth",
+                // "--write_metrics_dir","metrics/ABC",
+                "--use_parametric_edges",
+                "--visualize",
+                "--write_metrics",
+
+                // "--dataset","DTU",
+                // "--scan_names","scan118",//多个scene用逗号隔开
+                // "--version","release",
+                // "--edge_detector","PidiNet",
+                // "--gt_base_dir","data/DTU_Edge/groundtruth",
+                // "--write_metrics_dir","metrics/DTU",
+                // "--use_parametric_edges",
+                // "--visualize",
+                // "--write_metrics",
+               
+            ]
+
         }
-
-
       
     ]
 
