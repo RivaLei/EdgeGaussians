@@ -10,8 +10,8 @@
     <strong>Fredrik Kahl</strong></a>
   
   </p>
-  <h2 align="center">To appear at WACV 2025</h2>
-  <h3 align="center"><a href="https://arxiv.org/abs/2409.12886">ArXiV</a></h3>
+  <h2 align="center">WACV 2025</h2>
+  <h3 align="center"><a href="https://arxiv.org/pdf/2409.12886">Paper</a></h3>
 </p>
 
 <p align="center" style="display: flex; justify-content: center;">
@@ -36,8 +36,10 @@ conda activate edgegaussians
 ```
 
 ## Datasets
-For evaluation, we use the EMAP-NEF dataset and selected scenes from the DTU dataset.
+For quantitiive evaluation, we use the EMAP-NEF dataset and selected scenes from the DTU dataset.
 Since we use the data as formated by EMAP, you can download it using the instructions mentioned on [EMAP's repository](https://github.com/cvg/EMAP): 
+
+Additionally, Replica dataset (as provided by EMAP with the additional colmap triangulated points) can be downloaded from [here](https://drive.google.com/drive/folders/1mERDUl-UeJzFDfjUOUHqQBuk9xVSl4PG?usp=sharing).
 
 ## Training
 Assuming the data is structured as done by EMAP, you can use the following command to train EdgeGaussians on a scene:
@@ -98,16 +100,14 @@ If you have found the work useful or would like to compare against it, please ci
 
 
 ```BibTeX
-@misc{chelani2024edgegaussians3dedge,
-      title={EdgeGaussians -- 3D Edge Mapping via Gaussian Splatting}, 
-      author={Kunal Chelani and Assia Benbihi and Torsten Sattler and Fredrik Kahl},
-      year={2024},
-      eprint={2409.12886},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2409.12886}, 
+@InProceedings{Chelani_2025_EdgeGaussians,
+    author    = {Chelani, Kunal and Benbihi, Assia and Sattler, Torsten and Kahl, Fredrik},
+    title     = {EdgeGaussians - 3D Edge Mapping via Gaussian Splatting},
+    booktitle = {Proceedings of the Winter Conference on Applications of Computer Vision (WACV)},
+    month     = {February},
+    year      = {2025},
+    pages     = {3268-3279}
 }
-
 ```
 
 ## Contact
